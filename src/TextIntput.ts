@@ -6,6 +6,7 @@ class TextInput {
     private isFocused: boolean;
     private isDrag: boolean;
     private fontSize: number;
+    private maxLength: number;
     private color: {
         font: string,
         cursor: string,
@@ -35,7 +36,7 @@ class TextInput {
     private context: CanvasRenderingContext2D;
     private enterCallback: (event: KeyboardEvent) => void;
 
-    constructor(defaultValue: string, onEnter: (event: KeyboardEvent) => void, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+    constructor(defaultValue: string, onEnter: (event: KeyboardEvent) => void, maxLength: number, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
         this.canvas = canvas;
         this.context = context;
         this.enterCallback = onEnter;
@@ -45,6 +46,7 @@ class TextInput {
         this.isFocused = false;
         this.isDrag = false;
         this.fontSize = 13;
+        this.maxLength = maxLength;
 
         this.color = {
             font: 'black',
@@ -86,11 +88,12 @@ class TextInput {
         this.hiddenInput.style.width = '296px';
         this.hiddenInput.style.height = '14px';
         this.hiddenInput.style.fontFamily = 'monospace';
-        // this.hiddenInput.style.opacity = '0';
-        // this.hiddenInput.style.zIndex = '0';
-        // this.hiddenInput.style.cursor = 'none';
-        // this.hiddenInput.style.transform = 'scale(0)';
-        // this.hiddenInput.style.pointerEvents = 'none';
+        this.hiddenInput.maxLength = this.maxLength;
+        this.hiddenInput.style.opacity = '0';
+        this.hiddenInput.style.zIndex = '0';
+        this.hiddenInput.style.cursor = 'none';
+        this.hiddenInput.style.transform = 'scale(0)';
+        this.hiddenInput.style.pointerEvents = 'none';
         this.setValue(defaultValue);
         document.body.appendChild(this.hiddenInput);
 
@@ -98,9 +101,10 @@ class TextInput {
         this.hiddenInput.addEventListener('keyup', this.onKeyUp.bind(this));
         this.hiddenInput.addEventListener('paste', this.onPaste.bind(this));
         this.hiddenInput.addEventListener('cut', this.onCut.bind(this));
-        window.addEventListener('mousemove', this.onMouseMove.bind(this), true);
-        window.addEventListener('mousedown', this.onMouseDown.bind(this), true);
-        window.addEventListener('mouseup', this.onMouseUp.bind(this), true);
+        canvas.addEventListener('mousemove', this.onMouseMove.bind(this), true);
+        canvas.addEventListener('mousedown', this.onMouseDown.bind(this), true);
+        canvas.addEventListener('mouseup', this.onMouseUp.bind(this), true);
+        canvas.addEventListener('dblclick', this.onDoubleClick.bind(this), true);
     }
 
     onKeyDown(event: KeyboardEvent) {
@@ -138,14 +142,14 @@ class TextInput {
         }
 
         const target = event.target as HTMLInputElement;
-        this.value = target.value;
-        this.selection = [target.selectionStart, target.selectionEnd];
+        this.setValue(target.value);
+        this.setSelection(target.selectionStart, target.selectionEnd);
     }
 
     onKeyUp(event: Event) {
         const target = event.target as HTMLInputElement;
-        this.value = target.value;
-        this.selection = [target.selectionStart, target.selectionEnd];
+        this.setValue(target.value);
+        this.setSelection(target.selectionStart, target.selectionEnd);
     }
 
     onPaste(event: ClipboardEvent) {
@@ -205,7 +209,16 @@ class TextInput {
         this.isDrag = false;
     }
 
-    render() {
+    onDoubleClick(event: MouseEvent) {
+        event.preventDefault();
+
+        if (this.contains(this.mousePos.x, this.mousePos.y)) {
+            // TODO: ,.;:/[]- selection
+            this.setSelection(0, this.value.length);
+        }
+    }
+
+    render(deltaTime: number) {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         const x = this.bounds.x + this.padding.left + this.border.left;
@@ -220,9 +233,11 @@ class TextInput {
                 this.context.fillStyle = this.color.selection;
                 this.context.fillRect(selectOffset + x, y, selectWidth, this.fontSize);
             } else {
-                const cursorOffset = this.measureText(text.substring(0, this.selection[0]));
-                this.context.fillStyle = this.color.cursor;
-                this.context.fillRect(cursorOffset + x, y, 1, this.fontSize);
+                if (Math.floor(Date.now() / this.cursorFrequency) % 2) {
+                    const cursorOffset = this.measureText(text.substring(0, this.selection[0]));
+                    this.context.fillStyle = this.color.cursor;
+                    this.context.fillRect(cursorOffset + x, y, 1, this.fontSize);
+                }
             }
         }
 
@@ -259,6 +274,11 @@ class TextInput {
             this.isFocused = false;
             this.hiddenInput.blur();
         }
+    }
+
+    setMaxLength(value: number) {
+        this.hiddenInput.maxLength = value;
+        this.maxLength = value;
     }
 
     private onRemoveBefore() {

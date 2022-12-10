@@ -4,7 +4,7 @@ class TextInput {
     private selection: [number, number];
     private hiddenInput: HTMLInputElement;
     private isFocused: boolean;
-    private isDrag: boolean;
+    private selectionStart: number;
     private fontSize: number;
     private maxLength: number;
     private color: {
@@ -44,7 +44,7 @@ class TextInput {
 
         this.selection = [0, 0];
         this.isFocused = false;
-        this.isDrag = false;
+        this.selectionStart = -1;
         this.fontSize = 13;
         this.maxLength = maxLength;
 
@@ -83,11 +83,6 @@ class TextInput {
         this.hiddenInput = document.createElement('input') as HTMLInputElement;
         this.hiddenInput.type = 'text';
         this.hiddenInput.style.position = 'absolute';
-        this.hiddenInput.style.left = '326px';
-        this.hiddenInput.style.top = '350px';
-        this.hiddenInput.style.width = '296px';
-        this.hiddenInput.style.height = '14px';
-        this.hiddenInput.style.fontFamily = 'monospace';
         this.hiddenInput.maxLength = this.maxLength;
         this.hiddenInput.style.opacity = '0';
         this.hiddenInput.style.zIndex = '0';
@@ -179,11 +174,10 @@ class TextInput {
         this.mousePos.x = x;
         this.mousePos.y = y;
 
-        if (this.isFocused && this.isDrag) {
-            // TODO: back selection
+        if (this.isFocused && this.selectionStart >= 0) {
             const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
-            const start = this.clamp(curPos, 0, this.selection[0]);
-            const end = this.clamp(curPos, this.selection[0], this.value.length);
+            const start = Math.min(this.selectionStart, curPos);
+            const end = Math.max(this.selectionStart, curPos);
 
             this.setSelection(start, end);
         }
@@ -197,7 +191,7 @@ class TextInput {
 
             const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
             this.setSelection(curPos, curPos);
-            this.isDrag = true;
+            this.selectionStart = curPos;
 
             return;
         }
@@ -206,7 +200,7 @@ class TextInput {
     }
 
     onMouseUp(event: MouseEvent) {
-        this.isDrag = false;
+        this.selectionStart = -1;
     }
 
     onDoubleClick(event: MouseEvent) {
@@ -365,6 +359,7 @@ class TextInput {
     }
 
     private clipText() {
+        // TODO: clip 됬을 때, 커서 이동 처리
         const value = this.value;
         const width = this.measureText(value);
         const fillPercent = width / (this.bounds.w);

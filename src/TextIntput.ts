@@ -4,14 +4,12 @@ class TextInput {
     private selection: [number, number];
     private hiddenInput: HTMLInputElement;
     private isFocused: boolean;
-    private isHover: boolean;
     private isDrag: boolean;
     private fontSize: number;
     private color: {
         font: string,
         cursor: string,
         selection: string,
-        hover: string
     }
     private bounds: {
         x: number,
@@ -35,23 +33,23 @@ class TextInput {
     private cursorFrequency: number;
     private canvas: HTMLCanvasElement;
     private context: CanvasRenderingContext2D;
+    private enterCallback: (event: KeyboardEvent) => void;
 
-    constructor(defaultValue: string, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+    constructor(defaultValue: string, onEnter: (event: KeyboardEvent) => void, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
         this.canvas = canvas;
         this.context = context;
+        this.enterCallback = onEnter;
         this.cursorFrequency = 500;
 
         this.selection = [0, 0];
         this.isFocused = false;
-        this.isHover = false;
         this.isDrag = false;
         this.fontSize = 13;
 
         this.color = {
             font: 'black',
             cursor: 'black',
-            selection: 'rgba(0, 0, 106, 0.5)',
-            hover: 'rgba(0, 0, 0, 0.05)'
+            selection: 'rgba(0, 0, 106, 0.5)'
         };
 
         this.bounds = {
@@ -98,6 +96,8 @@ class TextInput {
 
         this.hiddenInput.addEventListener('keydown', this.onKeyDown.bind(this));
         this.hiddenInput.addEventListener('keyup', this.onKeyUp.bind(this));
+        this.hiddenInput.addEventListener('paste', this.onPaste.bind(this));
+        this.hiddenInput.addEventListener('cut', this.onCut.bind(this));
         window.addEventListener('mousemove', this.onMouseMove.bind(this), true);
         window.addEventListener('mousedown', this.onMouseDown.bind(this), true);
         window.addEventListener('mouseup', this.onMouseUp.bind(this), true);
@@ -105,45 +105,36 @@ class TextInput {
 
     onKeyDown(event: KeyboardEvent) {
         const keyCode = event.which;
-        const isShift = event.shiftKey;
 
-        // Ctrl/Cmd + A
-        if (keyCode === 65 && (event.ctrlKey || event.metaKey)) {
-            event.preventDefault();
-            this.selectAllText();
-            return;
-        }
+        if (event.ctrlKey || event.metaKey) {
+            const isShift = event.shiftKey;
 
-        if (event.metaKey || event.ctrlKey) {
-            event.preventDefault();
-
-            // left: 37
-            if (keyCode === 37) {
-                this.selection[0] = 0;
-
-                if (isShift) {
-                    this.setSelection(0, this.selection[0]);
-                }
-            } else if (keyCode === 39) { // right: 39
-                this.selection[1] = this.value.length;
-
-                if (isShift) {
-                    this.setSelection(this.selection[0], this.selection[1]);
-                }
-            } else if (keyCode === 8) { // backspace: 8
-                this.value = '';
-                this.selection = [0, 0];
+            switch (keyCode) {
+                case 65: // A key
+                    event.preventDefault();
+                    this.selectAllText();
+                    return;
+                case 37: // left arrow
+                    event.preventDefault();
+                    this.setSelection(0, isShift ? this.selection[1] : 0);
+                    return;
+                case 39: // right arrow
+                    event.preventDefault();
+                    this.setSelection(
+                        isShift ? this.selection[0] : this.value.length,
+                        this.value.length
+                    );
+                    return;
+                case 8: // backspace
+                    event.preventDefault();
+                    this.onRemoveBefore();
+                    return;
             }
-            return;
         }
 
         // enter key
         if (keyCode === 13) {
-            event.preventDefault();
-            console.log('enter key');
-        } else if (keyCode === 9) { // tab key
-            event.preventDefault();
-            console.log('tab key');
+            this.onEnter(event);
         }
 
         const target = event.target as HTMLInputElement;
@@ -157,6 +148,24 @@ class TextInput {
         this.selection = [target.selectionStart, target.selectionEnd];
     }
 
+    onPaste(event: ClipboardEvent) {
+        event.preventDefault();
+        this.appendValue(event.clipboardData.getData('text'));
+    }
+
+    onCut(event: ClipboardEvent) {
+        event.preventDefault();
+        event.clipboardData.setData('text/plain', document.getSelection().toString());
+        const outside = this.getSelectionOutside();
+        this.setValue(`${outside[0]}${outside[1]}`);
+        this.setSelection(outside[0].length, outside[0].length);
+    }
+
+    onEnter(event: KeyboardEvent) {
+        event.preventDefault();
+        this.enterCallback(event);
+    }
+
     onMouseMove(event: MouseEvent) {
         const target = event.target as HTMLElement;
         const rect = target.getBoundingClientRect();
@@ -166,15 +175,8 @@ class TextInput {
         this.mousePos.x = x;
         this.mousePos.y = y;
 
-        if (this.contains(this.mousePos.x, this.mousePos.y)) {
-            this.isHover = true;
-            this.canvas.style.cursor = 'text';
-        } else {
-            this.isHover = false;
-            this.canvas.style.cursor = 'default';
-        }
-
         if (this.isFocused && this.isDrag) {
+            // TODO: back selection
             const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
             const start = this.clamp(curPos, 0, this.selection[0]);
             const end = this.clamp(curPos, this.selection[0], this.value.length);
@@ -190,13 +192,12 @@ class TextInput {
             this.setFocus(true);
 
             const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
-            this.hiddenInput.selectionStart = curPos;
-            this.hiddenInput.selectionEnd = curPos;
-            this.selection = [curPos, curPos];
+            this.setSelection(curPos, curPos);
             this.isDrag = true;
+
             return;
         }
-        
+
         this.setFocus(false);
     }
 
@@ -212,15 +213,13 @@ class TextInput {
         const text = this.clipText();
 
         if (this.isFocused) {
-            if (this.selection[1] > 0) {
+            if (this.selection[0] !== this.selection[1]) {
                 const selectOffset = this.measureText(text.substring(0, this.selection[0]));
                 const selectWidth = this.measureText(text.substring(this.selection[0], this.selection[1]));
 
                 this.context.fillStyle = this.color.selection;
                 this.context.fillRect(selectOffset + x, y, selectWidth, this.fontSize);
-            }
-
-            if (Math.floor(Date.now() / this.cursorFrequency) % 2) {
+            } else {
                 const cursorOffset = this.measureText(text.substring(0, this.selection[0]));
                 this.context.fillStyle = this.color.cursor;
                 this.context.fillRect(cursorOffset + x, y, 1, this.fontSize);
@@ -229,11 +228,6 @@ class TextInput {
 
         const area = this.area();
         const textY = Math.round(y + this.fontSize / 2);
-
-        if (!this.isFocused && this.isHover) {
-            this.context.fillStyle = this.color.hover;
-            this.context.fillRect(area.x, area.y, area.w, area.h);
-        }
 
         this.context.fillStyle = this.color.font;
         this.context.font = `${this.fontSize}px monospace`;
@@ -254,6 +248,7 @@ class TextInput {
         this.selection[1] = end;
         this.hiddenInput.selectionStart = start;
         this.hiddenInput.selectionEnd = end;
+        // TODO: refresh cursor blink!
     }
 
     setFocus(focus: boolean) {
@@ -264,6 +259,25 @@ class TextInput {
             this.isFocused = false;
             this.hiddenInput.blur();
         }
+    }
+
+    private onRemoveBefore() {
+        const remain = this.value.substring(this.selection[1], this.value.length);
+        this.setValue(remain);
+        this.setSelection(0, 0);
+    }
+
+    private appendValue(value: string) {
+        const outside = this.getSelectionOutside();
+        const lastCurPos = outside[0].length + value.length;
+        this.setValue(`${outside[0]}${value}${outside[1]}`);
+        this.setSelection(lastCurPos, lastCurPos);
+    }
+
+    private getSelectionOutside(): [string, string] {
+        const before = this.value.substring(0, this.selection[0]);
+        const after = this.value.substring(this.selection[1], this.value.length);
+        return [before, after];
     }
 
     private contains(x: number, y: number) {

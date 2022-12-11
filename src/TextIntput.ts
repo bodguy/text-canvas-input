@@ -1,5 +1,7 @@
 class TextInput {
 
+    private static delimiter: string = " ,.;:/[]-\\?";
+
     private value: string;
     private selection: [number, number];
     private hiddenInput: HTMLInputElement;
@@ -181,7 +183,7 @@ class TextInput {
     }
 
     onLeft(event: KeyboardEvent) {
-        // TODO: left, right 선택시, 양쪽 이동현상 제거, alt key 처리
+        // TODO: left, right 선택시, 양쪽 이동현상 제거
         event.preventDefault();
         const altKey = event.altKey;
 
@@ -190,7 +192,9 @@ class TextInput {
             return;
         }
 
-        const prevCurPos = this.clamp(this.selection[0] - 1, 0, this.value.length);
+        const prevCurPos = altKey ? 
+            this.getNearestTermIndex(this.selection[0])[0] 
+            : this.clamp(this.selection[0] - 1, 0, this.value.length);
 
         this.setSelection(
             prevCurPos,
@@ -207,7 +211,9 @@ class TextInput {
             return;
         }
 
-        const nextCurPos = this.clamp(this.selection[1] + 1, 0, this.value.length);
+        const nextCurPos = altKey ? 
+            this.getNearestTermIndex(this.selection[1])[1] 
+            : this.clamp(this.selection[1] + 1, 0, this.value.length);
 
         this.setSelection(
             event.shiftKey ? this.selection[0] : nextCurPos,
@@ -256,11 +262,34 @@ class TextInput {
 
     onDoubleClick(event: MouseEvent) {
         event.preventDefault();
+        const leftButton = event.button === 0;
 
-        if (this.contains(this.mousePos.x, this.mousePos.y)) {
-            // TODO: ,.;:/[]- selection
-            this.setSelection(0, this.value.length);
+        if (leftButton && this.contains(this.mousePos.x, this.mousePos.y)) {
+            const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
+            const [start, end] = this.getNearestTermIndex(curPos);
+            this.setSelection(start, end);
         }
+    }
+
+    getNearestTermIndex(pos: number): [number, number] {
+        let start = 0;
+        let end = this.value.length;
+
+        for (let i = pos - 1; i > 0; i--) {
+            if (TextInput.delimiter.includes(this.value[i])) {
+                start = i + 1;
+                break;
+            }
+        }
+
+        for (let i = pos; i < this.value.length; i++) {
+            if (TextInput.delimiter.includes(this.value[i])) {
+                end = i;
+                break;
+            }
+        }
+
+        return [start, end];
     }
 
     render(deltaTime: number) {
@@ -268,18 +297,17 @@ class TextInput {
 
         const x = this.bounds.x + this.padding.left + this.border.left;
         const y = this.bounds.y + this.padding.top + this.border.top;
-        const text = this.clipText();
 
         if (this.isFocused) {
             if (this.isSelected()) {
-                const selectOffset = this.measureText(text.substring(0, this.selection[0]));
-                const selectWidth = this.measureText(text.substring(this.selection[0], this.selection[1]));
+                const selectOffset = this.measureText(this.value.substring(0, this.selection[0]));
+                const selectWidth = this.measureText(this.value.substring(this.selection[0], this.selection[1]));
 
                 this.context.fillStyle = this.color.selection;
                 this.context.fillRect(selectOffset + x, y, selectWidth, this.fontSize);
             } else {
                 if (Math.floor(Date.now() / this.cursorFrequency) % 2) {
-                    const cursorOffset = this.measureText(text.substring(0, this.selection[0]));
+                    const cursorOffset = this.measureText(this.value.substring(0, this.selection[0]));
                     this.context.fillStyle = this.color.cursor;
                     this.context.fillRect(cursorOffset + x, y, 1, this.fontSize);
                 }
@@ -293,7 +321,6 @@ class TextInput {
         this.context.textAlign = 'left';
         this.context.textBaseline = 'middle';
 
-        // TODO: clip text 넘어갈시 버그 수정
         const [before, after] = this.getSelectionOutside();
         const selectionText = this.value.substring(this.selection[0], this.selection[1]);
         this.context.fillStyle = this.color.font;
@@ -380,13 +407,12 @@ class TextInput {
 
     private clickPos(x: number, y: number) {
         const boundX = x - this.area().x;
-        const text = this.clipText();
         let totalWidth = 0;
-        let pos = text.length;
+        let pos = this.value.length;
 
-        if (boundX < this.measureText(text)) {
-            for (let i = 0; i < text.length; i++) {
-                totalWidth += this.measureText(text[i]);
+        if (boundX < this.measureText(this.value)) {
+            for (let i = 0; i < this.value.length; i++) {
+                totalWidth += this.measureText(this.value[i]);
                 if (totalWidth >= boundX) {
                     pos = i;
                     break;
@@ -419,18 +445,6 @@ class TextInput {
         this.context.lineTo(x + w + 0.5, y + h + 0.5);
 
         this.context.stroke();
-    }
-
-    private clipText() {
-        // TODO: clip 됬을 때, 커서 이동 처리
-        const value = this.value;
-        const width = this.measureText(value);
-        const fillPercent = width / (this.bounds.w - this.padding.left);
-        const text = fillPercent > 1
-            ? value.substr(-1 * Math.floor(value.length / fillPercent))
-            : value;
-
-        return text;
     }
 
     private isSelected(): boolean {

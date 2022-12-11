@@ -5,11 +5,13 @@ class TextInput {
         fontColor: 'black',
         cursorColor: 'black',
         selectionColor: 'rgba(0, 0, 106, 1)',
-        boxColor: 'grey',
+        boxColor: 'black',
+        focusColor: 'grey',
         fontSize: 13,
         maxLength: -1,
         caretBlinkRate: 0.5,
         defaultValue: '',
+        limitRegex: '',
         bounds: {
             x: 10,
             y: 250,
@@ -28,7 +30,7 @@ class TextInput {
             right: 1,
             bottom: 1
         },
-        enterCallback: (event: KeyboardEvent) => {}
+        enterCallback: (event: KeyboardEvent) => { }
     }
 
     private value: string;
@@ -52,7 +54,7 @@ class TextInput {
         this.mousePos = { x: 0, y: 0 };
         this.settings = Object.assign(TextInput.defaultSettings, settings);
         this.settings.bounds.h = this.settings.fontSize + 2;
-        
+
         this.hiddenInput = document.createElement('input') as HTMLInputElement;
         this.hiddenInput.type = 'text';
         this.hiddenInput.style.position = 'absolute';
@@ -152,7 +154,6 @@ class TextInput {
     }
 
     onLeft(event: KeyboardEvent) {
-        // TODO: left, right 선택시, 양쪽 이동현상 제거
         event.preventDefault();
         const altKey = event.altKey;
 
@@ -161,8 +162,8 @@ class TextInput {
             return;
         }
 
-        const prevCurPos = altKey ? 
-            this.getNearestTermIndex(this.selection[0])[0] 
+        const prevCurPos = altKey ?
+            this.getNearestTermIndex(this.selection[0])[0]
             : this.clamp(this.selection[0] - 1, 0, this.value.length);
 
         this.setSelection(
@@ -180,8 +181,8 @@ class TextInput {
             return;
         }
 
-        const nextCurPos = altKey ? 
-            this.getNearestTermIndex(this.selection[1])[1] 
+        const nextCurPos = altKey ?
+            this.getNearestTermIndex(this.selection[1])[1]
             : this.clamp(this.selection[1] + 1, 0, this.value.length);
 
         this.setSelection(
@@ -264,7 +265,7 @@ class TextInput {
     render(deltaTime: number) {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.blinkTimer += deltaTime;
-        
+
         const x = this.settings.bounds.x + this.settings.padding.left + this.settings.border.left;
         const y = this.settings.bounds.y + this.settings.padding.top + this.settings.border.top;
 
@@ -398,7 +399,7 @@ class TextInput {
     private drawRect(x: number, y: number, w: number, h: number) {
         this.context.beginPath();
 
-        this.context.strokeStyle = this.isFocused ? this.settings.boxColor : 'black';
+        this.context.strokeStyle = this.isFocused ? this.settings.focusColor : this.settings.boxColor;
 
         this.context.lineWidth = this.settings.border.left;
         this.context.moveTo(x + 0.5, y + 0.5);

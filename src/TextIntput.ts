@@ -3,6 +3,7 @@ class TextInput {
     private static delimiter: string = " ,.;:/[]-\\?";
     private static defaultSettings = {
         fontColor: 'black',
+        selectionFontColor: 'white',
         cursorColor: 'black',
         selectionColor: 'rgba(0, 0, 106, 1)',
         boxColor: 'black',
@@ -296,7 +297,7 @@ class TextInput {
         const selectionText = this.value.substring(this.selection[0], this.selection[1]);
         this.context.fillStyle = this.settings.fontColor;
         this.context.fillText(before, x, textY);
-        this.context.fillStyle = 'white';
+        this.context.fillStyle = this.settings.selectionFontColor;
         this.context.fillText(selectionText, x + this.measureText(before), textY);
         this.context.fillStyle = this.settings.fontColor;
         this.context.fillText(after, x + this.measureText(before + selectionText), textY);

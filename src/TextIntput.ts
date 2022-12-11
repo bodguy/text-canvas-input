@@ -51,7 +51,7 @@ class TextInput {
         this.color = {
             font: 'black',
             cursor: 'black',
-            selection: 'rgba(0, 0, 106, 0.5)'
+            selection: 'rgba(0, 0, 106, 1)'
         };
 
         this.bounds = {
@@ -106,8 +106,6 @@ class TextInput {
         const keyCode = event.which;
 
         if (event.ctrlKey || event.metaKey) {
-            const isShift = event.shiftKey;
-
             switch (keyCode) {
                 case 65: // A key
                     event.preventDefault();
@@ -115,12 +113,12 @@ class TextInput {
                     return;
                 case 37: // left arrow
                     event.preventDefault();
-                    this.setSelection(0, isShift ? this.selection[1] : 0);
+                    this.setSelection(0, event.shiftKey ? this.selection[1] : 0);
                     return;
                 case 39: // right arrow
                     event.preventDefault();
                     this.setSelection(
-                        isShift ? this.selection[0] : this.value.length,
+                        event.shiftKey ? this.selection[0] : this.value.length,
                         this.value.length
                     );
                     return;
@@ -128,12 +126,24 @@ class TextInput {
                     event.preventDefault();
                     this.onRemoveBefore();
                     return;
+                case 90: // z
+                    event.preventDefault();
+                    // TODO: rollback 처리
+                    console.log('z');
+                    return;
             }
         }
 
-        // enter key
-        if (keyCode === 13) {
-            this.onEnter(event);
+        switch (keyCode) {
+            case 13: // enter key
+                this.onEnter(event);
+                break;
+            case 37: // left arrow
+                this.onLeft(event);
+                break;
+            case 39: // right arrow
+                this.onRight(event);
+                break;
         }
 
         const target = event.target as HTMLInputElement;
@@ -155,7 +165,7 @@ class TextInput {
     onCut(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', document.getSelection().toString());
-        const outside = this.getSelectionOutside();
+        const outside = this.getSelectionOutside(this.value);
         this.setValue(`${outside[0]}${outside[1]}`);
         this.setSelection(outside[0].length, outside[0].length);
     }
@@ -163,6 +173,39 @@ class TextInput {
     onEnter(event: KeyboardEvent) {
         event.preventDefault();
         this.enterCallback(event);
+    }
+
+    onLeft(event: KeyboardEvent) {
+        // TODO: left, right 선택시, 양쪽 이동현상 제거
+        event.preventDefault();
+
+        if (this.selection[0] !== this.selection[1] && !event.shiftKey) {
+            this.setSelection(this.selection[0], this.selection[0]);
+            return;
+        }
+
+        const prevCurPos = this.clamp(this.selection[0] - 1, 0, this.value.length);
+
+        this.setSelection(
+            prevCurPos,
+            event.shiftKey ? this.selection[1] : prevCurPos
+        );
+    }
+
+    onRight(event: KeyboardEvent) {
+        event.preventDefault();
+
+        if (this.selection[0] !== this.selection[1] && !event.shiftKey) {
+            this.setSelection(this.selection[1], this.selection[1]);
+            return;
+        }
+
+        const nextCurPos = this.clamp(this.selection[1] + 1, 0, this.value.length);
+
+        this.setSelection(
+            event.shiftKey ? this.selection[0] : nextCurPos,
+            nextCurPos
+        );
     }
 
     onMouseMove(event: MouseEvent) {
@@ -238,11 +281,19 @@ class TextInput {
         const area = this.area();
         const textY = Math.round(y + this.fontSize / 2);
 
-        this.context.fillStyle = this.color.font;
         this.context.font = `${this.fontSize}px monospace`;
         this.context.textAlign = 'left';
         this.context.textBaseline = 'middle';
-        this.context.fillText(text, x, textY);
+
+        // TODO: clip text 넘어갈시 버그 수정
+        const [before, after] = this.getSelectionOutside(text);
+        const selectionText = this.value.substring(this.selection[0], this.selection[1]);
+        this.context.fillStyle = this.color.font;
+        this.context.fillText(before, x, textY);
+        this.context.fillStyle = 'white';
+        this.context.fillText(selectionText, x + this.measureText(before), textY);
+        this.context.fillStyle = this.color.font;
+        this.context.fillText(after, x + this.measureText(before + selectionText), textY);
 
         this.drawRect(area.x, area.y, area.w, area.h);
     }
@@ -276,21 +327,28 @@ class TextInput {
     }
 
     private onRemoveBefore() {
+        if (this.selection[0] !== this.selection[1]) {
+            const [before, after] = this.getSelectionOutside(this.value);
+            this.setValue(before + after);
+            this.setSelection(before.length, before.length);
+            return;
+        }
+
         const remain = this.value.substring(this.selection[1], this.value.length);
         this.setValue(remain);
         this.setSelection(0, 0);
     }
 
     private appendValue(value: string) {
-        const outside = this.getSelectionOutside();
+        const outside = this.getSelectionOutside(this.value);
         const lastCurPos = outside[0].length + value.length;
         this.setValue(`${outside[0]}${value}${outside[1]}`);
         this.setSelection(lastCurPos, lastCurPos);
     }
 
-    private getSelectionOutside(): [string, string] {
-        const before = this.value.substring(0, this.selection[0]);
-        const after = this.value.substring(this.selection[1], this.value.length);
+    private getSelectionOutside(text: string): [string, string] {
+        const before = text.substring(0, this.selection[0]);
+        const after = text.substring(this.selection[1], text.length);
         return [before, after];
     }
 
@@ -376,6 +434,10 @@ class TextInput {
 
     private selectAllText() {
         this.setSelection(0, this.value.length);
+    }
+
+    private clamp(value: number, min: number, max: number): number {
+        return Math.min(Math.max(value, min), max);
     }
 }
 

@@ -2,16 +2,20 @@
   "name": "text-canvas-input",
   "version": "0.0.1",
   "description": "canvas based text input field",
+  "repository": "https://github.com/bodguy/text-canvas-input",
+  "author": "bodguy",
+  "license": "MIT",
   "main": "index.ts",
   "type": "module",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build"
   },
-  "author": "",
-  "license": "ISC",
   "devDependencies": {
     "typescript": "^4.9.4",
     "vite": "^4.0.0"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   }
 }

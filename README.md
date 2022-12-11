@@ -1,5 +1,7 @@
 # Text canvas input
 
+![Alt text](./meta/sample.png "Title")
+
 canvas based text input field.
 
 ## How to run

@@ -1,101 +1,68 @@
 class TextInput {
 
     private static delimiter: string = " ,.;:/[]-\\?";
+    private static defaultSettings = {
+        fontColor: 'black',
+        cursorColor: 'black',
+        selectionColor: 'rgba(0, 0, 106, 1)',
+        boxColor: 'grey',
+        fontSize: 13,
+        maxLength: -1,
+        caretBlinkRate: 0.5,
+        defaultValue: '',
+        bounds: {
+            x: 10,
+            y: 250,
+            w: 780,
+            h: 15
+        },
+        padding: {
+            top: 1,
+            left: 1,
+            right: 1,
+            bottom: 2
+        },
+        border: {
+            top: 1,
+            left: 1,
+            right: 1,
+            bottom: 1
+        },
+        enterCallback: (event: KeyboardEvent) => {}
+    }
 
     private value: string;
     private selection: [number, number];
     private hiddenInput: HTMLInputElement;
     private isFocused: boolean;
     private selectionStart: number;
-    private fontSize: number;
-    private maxLength: number;
     private blinkTimer: number;
-    private color: {
-        font: string,
-        cursor: string,
-        selection: string,
-        box: string
-    }
-    private bounds: {
-        x: number,
-        y: number,
-        w: number,
-        h: number
-    };
-    private padding: {
-        top: number,
-        left: number,
-        right: number,
-        bottom: number
-    };
-    private border: {
-        top: number,
-        left: number,
-        right: number,
-        bottom: number
-    };
     private mousePos: { x: number, y: number };
-    private caretBlinkRate: number;
     private canvas: HTMLCanvasElement;
     private context: CanvasRenderingContext2D;
-    private enterCallback: (event: KeyboardEvent) => void;
+    private settings: typeof TextInput.defaultSettings;
 
-    constructor(defaultValue: string, onEnter: (event: KeyboardEvent) => void, maxLength: number, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
+    constructor(settings: Partial<typeof TextInput.defaultSettings>, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
         this.canvas = canvas;
         this.context = context;
-        this.enterCallback = onEnter;
-        this.caretBlinkRate = 0.5;
-
         this.selection = [0, 0];
         this.isFocused = false;
         this.selectionStart = -1;
-        this.fontSize = 40;
-        this.maxLength = maxLength;
         this.blinkTimer = 0;
-
-        this.color = {
-            font: 'black',
-            cursor: 'black',
-            selection: 'rgba(0, 0, 106, 1)',
-            box: 'pink'
-        };
-
-        this.bounds = {
-            x: 10,
-            y: 250,
-            w: 780,
-            h: this.fontSize + 2
-        };
-
-        this.padding = {
-            top: 1,
-            left: 1,
-            right: 1,
-            bottom: 2
-        };
-
-        this.border = {
-            top: 1,
-            left: 1,
-            right: 1,
-            bottom: 1
-        };
-
-        this.mousePos = {
-            x: 0,
-            y: 0
-        };
-
+        this.mousePos = { x: 0, y: 0 };
+        this.settings = Object.assign(TextInput.defaultSettings, settings);
+        this.settings.bounds.h = this.settings.fontSize + 2;
+        
         this.hiddenInput = document.createElement('input') as HTMLInputElement;
         this.hiddenInput.type = 'text';
         this.hiddenInput.style.position = 'absolute';
-        this.hiddenInput.maxLength = this.maxLength;
         this.hiddenInput.style.opacity = '0';
         this.hiddenInput.style.zIndex = '0';
         this.hiddenInput.style.cursor = 'none';
         this.hiddenInput.style.transform = 'scale(0)';
         this.hiddenInput.style.pointerEvents = 'none';
-        this.setValue(defaultValue);
+        this.setValue(this.settings.defaultValue);
+        this.setMaxLength(this.settings.maxLength);
         document.body.appendChild(this.hiddenInput);
 
         this.hiddenInput.addEventListener('keydown', this.onKeyDown.bind(this));
@@ -174,14 +141,14 @@ class TextInput {
     onCut(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', document.getSelection().toString());
-        const outside = this.getSelectionOutside();
-        this.setValue(`${outside[0]}${outside[1]}`);
-        this.setSelection(outside[0].length, outside[0].length);
+        const [before, after] = this.getSelectionOutside();
+        this.setValue(before + after);
+        this.setSelection(before.length, before.length);
     }
 
     onEnter(event: KeyboardEvent) {
         event.preventDefault();
-        this.enterCallback(event);
+        this.settings.enterCallback(event);
     }
 
     onLeft(event: KeyboardEvent) {
@@ -298,39 +265,39 @@ class TextInput {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.blinkTimer += deltaTime;
         
-        const x = this.bounds.x + this.padding.left + this.border.left;
-        const y = this.bounds.y + this.padding.top + this.border.top;
+        const x = this.settings.bounds.x + this.settings.padding.left + this.settings.border.left;
+        const y = this.settings.bounds.y + this.settings.padding.top + this.settings.border.top;
 
         if (this.isFocused) {
             if (this.isSelected()) {
                 const selectOffset = this.measureText(this.value.substring(0, this.selection[0]));
                 const selectWidth = this.measureText(this.value.substring(this.selection[0], this.selection[1]));
 
-                this.context.fillStyle = this.color.selection;
-                this.context.fillRect(selectOffset + x, y, selectWidth, this.fontSize);
+                this.context.fillStyle = this.settings.selectionColor;
+                this.context.fillRect(selectOffset + x, y, selectWidth, this.settings.fontSize);
             } else {
-                if (Math.floor(this.blinkTimer / this.caretBlinkRate) % 2) {
+                if (Math.floor(this.blinkTimer / this.settings.caretBlinkRate) % 2) {
                     const cursorOffset = this.measureText(this.value.substring(0, this.selection[0]));
-                    this.context.fillStyle = this.color.cursor;
-                    this.context.fillRect(cursorOffset + x, y, 1, this.fontSize);
+                    this.context.fillStyle = this.settings.cursorColor;
+                    this.context.fillRect(cursorOffset + x, y, 1, this.settings.fontSize);
                 }
             }
         }
 
         const area = this.area();
-        const textY = Math.round(y + this.fontSize / 2);
+        const textY = Math.round(y + this.settings.fontSize / 2);
 
-        this.context.font = `${this.fontSize}px monospace`;
+        this.context.font = `${this.settings.fontSize}px monospace`;
         this.context.textAlign = 'left';
         this.context.textBaseline = 'middle';
 
         const [before, after] = this.getSelectionOutside();
         const selectionText = this.value.substring(this.selection[0], this.selection[1]);
-        this.context.fillStyle = this.color.font;
+        this.context.fillStyle = this.settings.fontColor;
         this.context.fillText(before, x, textY);
         this.context.fillStyle = 'white';
         this.context.fillText(selectionText, x + this.measureText(before), textY);
-        this.context.fillStyle = this.color.font;
+        this.context.fillStyle = this.settings.fontColor;
         this.context.fillText(after, x + this.measureText(before + selectionText), textY);
 
         this.drawRect(area.x, area.y, area.w, area.h);
@@ -346,7 +313,7 @@ class TextInput {
         this.selection[1] = end;
         this.hiddenInput.selectionStart = start;
         this.hiddenInput.selectionEnd = end;
-        this.blinkTimer = this.caretBlinkRate;
+        this.blinkTimer = this.settings.caretBlinkRate;
     }
 
     setFocus(focus: boolean) {
@@ -361,8 +328,10 @@ class TextInput {
     }
 
     setMaxLength(value: number) {
-        this.hiddenInput.maxLength = value;
-        this.maxLength = value;
+        if (value !== -1) {
+            this.hiddenInput.maxLength = value;
+            this.settings.maxLength = value;
+        }
     }
 
     private onRemoveBefore() {
@@ -394,17 +363,17 @@ class TextInput {
     private contains(x: number, y: number) {
         const area = this.area();
         return x >= area.x &&
-            x <= (this.bounds.x + area.w) &&
+            x <= (this.settings.bounds.x + area.w) &&
             y >= area.y &&
-            y <= (this.bounds.y + area.h);
+            y <= (this.settings.bounds.y + area.h);
     }
 
     private area() {
         return {
-            x: this.bounds.x - this.padding.left - this.border.left,
-            y: this.bounds.y - this.padding.top - this.border.top,
-            w: this.bounds.w + this.padding.right + this.border.right,
-            h: this.bounds.h + this.padding.bottom + this.border.bottom
+            x: this.settings.bounds.x - this.settings.padding.left - this.settings.border.left,
+            y: this.settings.bounds.y - this.settings.padding.top - this.settings.border.top,
+            w: this.settings.bounds.w + this.settings.padding.right + this.settings.border.right,
+            h: this.settings.bounds.h + this.settings.padding.bottom + this.settings.border.bottom
         }
     }
 
@@ -429,21 +398,21 @@ class TextInput {
     private drawRect(x: number, y: number, w: number, h: number) {
         this.context.beginPath();
 
-        this.context.strokeStyle = this.isFocused ? this.color.box : 'black';
+        this.context.strokeStyle = this.isFocused ? this.settings.boxColor : 'black';
 
-        this.context.lineWidth = this.border.left;
+        this.context.lineWidth = this.settings.border.left;
         this.context.moveTo(x + 0.5, y + 0.5);
         this.context.lineTo(x + 0.5, y + h + 0.5);
 
-        this.context.lineWidth = this.border.right;
+        this.context.lineWidth = this.settings.border.right;
         this.context.moveTo(x + w + 0.5, y + 0.5);
         this.context.lineTo(x + w + 0.5, y + h + 0.5);
 
-        this.context.lineWidth = this.border.top;
+        this.context.lineWidth = this.settings.border.top;
         this.context.moveTo(x + 0.5, y + 0.5);
         this.context.lineTo(x + w + 0.5, y + 0.5);
 
-        this.context.lineWidth = this.border.bottom;
+        this.context.lineWidth = this.settings.border.bottom;
         this.context.moveTo(x + 0.5, y + h + 0.5);
         this.context.lineTo(x + w + 0.5, y + h + 0.5);
 

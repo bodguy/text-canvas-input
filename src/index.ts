@@ -3,7 +3,10 @@ import TextInput from "./TextIntput";
 document.addEventListener('DOMContentLoaded', () => {
     const canvas = document.getElementById("myCanvas") as HTMLCanvasElement;
     const context = canvas.getContext('2d');
-    const textInput = new TextInput("", (e) => { console.log("enter") }, 100, canvas, context);
+    const textInput = new TextInput({
+        fontSize: 40,
+        enterCallback: (e) => { console.log("enter") }
+    }, canvas, context);
 
     let lastTime = 0;
     function step(currentTime: DOMHighResTimeStamp) {

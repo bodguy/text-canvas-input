@@ -11,6 +11,7 @@ class TextInput {
         font: string,
         cursor: string,
         selection: string,
+        box: string
     }
     private bounds: {
         x: number,
@@ -45,20 +46,21 @@ class TextInput {
         this.selection = [0, 0];
         this.isFocused = false;
         this.selectionStart = -1;
-        this.fontSize = 13;
+        this.fontSize = 40;
         this.maxLength = maxLength;
 
         this.color = {
             font: 'black',
             cursor: 'black',
-            selection: 'rgba(0, 0, 106, 1)'
+            selection: 'rgba(0, 0, 106, 1)',
+            box: 'pink'
         };
 
         this.bounds = {
-            x: 320,
-            y: 320,
-            w: 300,
-            h: 15
+            x: 10,
+            y: 250,
+            w: 780,
+            h: this.fontSize + 2
         };
 
         this.padding = {
@@ -391,11 +393,7 @@ class TextInput {
     private drawRect(x: number, y: number, w: number, h: number) {
         this.context.beginPath();
 
-        if (this.isFocused) {
-            this.context.strokeStyle = 'red';
-        } else {
-            this.context.strokeStyle = 'black';
-        }
+        this.context.strokeStyle = this.isFocused ? this.color.box : 'black';
 
         this.context.lineWidth = this.border.left;
         this.context.moveTo(x + 0.5, y + 0.5);

@@ -362,7 +362,7 @@ class TextInput {
         // TODO: clip 됬을 때, 커서 이동 처리
         const value = this.value;
         const width = this.measureText(value);
-        const fillPercent = width / (this.bounds.w);
+        const fillPercent = width / (this.bounds.w - this.padding.left);
         const text = fillPercent > 1
             ? value.substr(-1 * Math.floor(value.length / fillPercent))
             : value;
@@ -376,10 +376,6 @@ class TextInput {
 
     private selectAllText() {
         this.setSelection(0, this.value.length);
-    }
-
-    private clamp(value: number, min: number, max: number): number {
-        return Math.min(Math.max(value, min), max);
     }
 }
 

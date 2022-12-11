@@ -277,12 +277,12 @@ class TextInput {
 
         for (let i = pos - 1; i > 0; i--) {
             if (TextInput.delimiter.includes(this.value[i])) {
-                start = i + 1;
+                start = i;
                 break;
             }
         }
 
-        for (let i = pos; i < this.value.length; i++) {
+        for (let i = pos + 1; i < this.value.length; i++) {
             if (TextInput.delimiter.includes(this.value[i])) {
                 end = i;
                 break;

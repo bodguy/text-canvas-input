@@ -129,9 +129,7 @@ class TextInput {
                     this.onRemoveBefore();
                     return;
                 case 90: // z
-                    event.preventDefault();
-                    // TODO: rollback 처리
-                    console.log('z');
+                    this.onUndo(event);
                     return;
             }
         }
@@ -159,6 +157,11 @@ class TextInput {
         this.setSelection(target.selectionStart, target.selectionEnd);
     }
 
+    onUndo(event: Event) {
+        event.preventDefault();
+        console.log("not implemented yet");
+    }
+
     onPaste(event: ClipboardEvent) {
         event.preventDefault();
         this.appendValue(event.clipboardData.getData('text'));
@@ -178,8 +181,9 @@ class TextInput {
     }
 
     onLeft(event: KeyboardEvent) {
-        // TODO: left, right 선택시, 양쪽 이동현상 제거
+        // TODO: left, right 선택시, 양쪽 이동현상 제거, alt key 처리
         event.preventDefault();
+        const altKey = event.altKey;
 
         if (this.isSelected() && !event.shiftKey) {
             this.setSelection(this.selection[0], this.selection[0]);
@@ -196,6 +200,7 @@ class TextInput {
 
     onRight(event: KeyboardEvent) {
         event.preventDefault();
+        const altKey = event.altKey;
 
         if (this.isSelected() && !event.shiftKey) {
             this.setSelection(this.selection[1], this.selection[1]);
@@ -230,8 +235,9 @@ class TextInput {
 
     onMouseDown(event: MouseEvent) {
         event.preventDefault();
+        const leftButton = event.button === 0;
 
-        if (this.contains(this.mousePos.x, this.mousePos.y)) {
+        if (leftButton && this.contains(this.mousePos.x, this.mousePos.y)) {
             this.setFocus(true);
 
             const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
@@ -318,6 +324,7 @@ class TextInput {
             this.isFocused = true;
             this.hiddenInput.focus();
         } else {
+            this.setSelection(0, 0);
             this.isFocused = false;
             this.hiddenInput.blur();
         }

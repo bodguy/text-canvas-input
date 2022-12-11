@@ -2,6 +2,10 @@
 
 canvas based text input field.
 
+## How to run
+
+just run `npm run dev`
+
 ## TODO
 
 - limitRegex

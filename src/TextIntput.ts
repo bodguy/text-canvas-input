@@ -9,6 +9,7 @@ class TextInput {
     private selectionStart: number;
     private fontSize: number;
     private maxLength: number;
+    private blinkTimer: number;
     private color: {
         font: string,
         cursor: string,
@@ -34,7 +35,7 @@ class TextInput {
         bottom: number
     };
     private mousePos: { x: number, y: number };
-    private cursorFrequency: number;
+    private caretBlinkRate: number;
     private canvas: HTMLCanvasElement;
     private context: CanvasRenderingContext2D;
     private enterCallback: (event: KeyboardEvent) => void;
@@ -43,13 +44,14 @@ class TextInput {
         this.canvas = canvas;
         this.context = context;
         this.enterCallback = onEnter;
-        this.cursorFrequency = 500;
+        this.caretBlinkRate = 0.5;
 
         this.selection = [0, 0];
         this.isFocused = false;
         this.selectionStart = -1;
         this.fontSize = 40;
         this.maxLength = maxLength;
+        this.blinkTimer = 0;
 
         this.color = {
             font: 'black',
@@ -294,7 +296,8 @@ class TextInput {
 
     render(deltaTime: number) {
         this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
+        this.blinkTimer += deltaTime;
+        
         const x = this.bounds.x + this.padding.left + this.border.left;
         const y = this.bounds.y + this.padding.top + this.border.top;
 
@@ -306,7 +309,7 @@ class TextInput {
                 this.context.fillStyle = this.color.selection;
                 this.context.fillRect(selectOffset + x, y, selectWidth, this.fontSize);
             } else {
-                if (Math.floor(Date.now() / this.cursorFrequency) % 2) {
+                if (Math.floor(this.blinkTimer / this.caretBlinkRate) % 2) {
                     const cursorOffset = this.measureText(this.value.substring(0, this.selection[0]));
                     this.context.fillStyle = this.color.cursor;
                     this.context.fillRect(cursorOffset + x, y, 1, this.fontSize);
@@ -343,7 +346,7 @@ class TextInput {
         this.selection[1] = end;
         this.hiddenInput.selectionStart = start;
         this.hiddenInput.selectionEnd = end;
-        // TODO: refresh cursor blink!
+        this.blinkTimer = this.caretBlinkRate;
     }
 
     setFocus(focus: boolean) {

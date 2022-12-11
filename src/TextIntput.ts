@@ -165,7 +165,7 @@ class TextInput {
     onCut(event: ClipboardEvent) {
         event.preventDefault();
         event.clipboardData.setData('text/plain', document.getSelection().toString());
-        const outside = this.getSelectionOutside(this.value);
+        const outside = this.getSelectionOutside();
         this.setValue(`${outside[0]}${outside[1]}`);
         this.setSelection(outside[0].length, outside[0].length);
     }
@@ -179,7 +179,7 @@ class TextInput {
         // TODO: left, right 선택시, 양쪽 이동현상 제거
         event.preventDefault();
 
-        if (this.selection[0] !== this.selection[1] && !event.shiftKey) {
+        if (this.isSelected() && !event.shiftKey) {
             this.setSelection(this.selection[0], this.selection[0]);
             return;
         }
@@ -195,7 +195,7 @@ class TextInput {
     onRight(event: KeyboardEvent) {
         event.preventDefault();
 
-        if (this.selection[0] !== this.selection[1] && !event.shiftKey) {
+        if (this.isSelected() && !event.shiftKey) {
             this.setSelection(this.selection[1], this.selection[1]);
             return;
         }
@@ -263,7 +263,7 @@ class TextInput {
         const text = this.clipText();
 
         if (this.isFocused) {
-            if (this.selection[0] !== this.selection[1]) {
+            if (this.isSelected()) {
                 const selectOffset = this.measureText(text.substring(0, this.selection[0]));
                 const selectWidth = this.measureText(text.substring(this.selection[0], this.selection[1]));
 
@@ -286,7 +286,7 @@ class TextInput {
         this.context.textBaseline = 'middle';
 
         // TODO: clip text 넘어갈시 버그 수정
-        const [before, after] = this.getSelectionOutside(text);
+        const [before, after] = this.getSelectionOutside();
         const selectionText = this.value.substring(this.selection[0], this.selection[1]);
         this.context.fillStyle = this.color.font;
         this.context.fillText(before, x, textY);
@@ -327,8 +327,8 @@ class TextInput {
     }
 
     private onRemoveBefore() {
-        if (this.selection[0] !== this.selection[1]) {
-            const [before, after] = this.getSelectionOutside(this.value);
+        if (this.isSelected()) {
+            const [before, after] = this.getSelectionOutside();
             this.setValue(before + after);
             this.setSelection(before.length, before.length);
             return;
@@ -340,15 +340,15 @@ class TextInput {
     }
 
     private appendValue(value: string) {
-        const outside = this.getSelectionOutside(this.value);
-        const lastCurPos = outside[0].length + value.length;
-        this.setValue(`${outside[0]}${value}${outside[1]}`);
+        const [before, after] = this.getSelectionOutside();
+        const lastCurPos = before.length + value.length;
+        this.setValue(before + value + after);
         this.setSelection(lastCurPos, lastCurPos);
     }
 
-    private getSelectionOutside(text: string): [string, string] {
-        const before = text.substring(0, this.selection[0]);
-        const after = text.substring(this.selection[1], text.length);
+    private getSelectionOutside(): [string, string] {
+        const before = this.value.substring(0, this.selection[0]);
+        const after = this.value.substring(this.selection[1], this.value.length);
         return [before, after];
     }
 
@@ -426,6 +426,10 @@ class TextInput {
             : value;
 
         return text;
+    }
+
+    private isSelected(): boolean {
+        return this.selection[0] !== this.selection[1];
     }
 
     private measureText(text: string) {

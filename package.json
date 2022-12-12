@@ -1,12 +1,26 @@
 {
   "name": "text-canvas-input",
-  "version": "0.0.1",
-  "description": "canvas based text input field",
-  "repository": "https://github.com/bodguy/text-canvas-input",
-  "author": "bodguy",
+  "version": "0.1.0",
+  "description": "Canvas based text input field",
+  "homepage": "https://github.com/bodguy/text-canvas-input",
+  "repository": {
+    "type": "git",
+    "url": "git@github.com:bodguy/text-canvas-input.git"
+  },
+  "author": "bodguy <alsrudgns99@gmail.com> (https://github.com/bodguy)",
   "license": "MIT",
   "main": "index.ts",
   "type": "module",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "keywords": [
+    "canvas",
+    "input text",
+    "webgl",
+    "ime"
+  ],
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc && vite build"
@@ -16,6 +30,6 @@
     "vite": "^4.0.0"
   },
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "@bodguy:registry": "https://npm.pkg.github.com"
   }
 }

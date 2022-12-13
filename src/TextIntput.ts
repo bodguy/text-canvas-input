@@ -40,20 +40,16 @@ class TextInput {
     private isFocused: boolean;
     private selectionStart: number;
     private blinkTimer: number;
-    private mousePos: { x: number, y: number };
-    private canvas: HTMLCanvasElement;
     private context: CanvasRenderingContext2D;
     private settings: typeof TextInput.defaultSettings;
 
     constructor(settings: Partial<typeof TextInput.defaultSettings>, canvas: HTMLCanvasElement, context: CanvasRenderingContext2D) {
-        this.canvas = canvas;
         this.context = context;
         this.selection = [0, 0];
         this.isFocused = false;
         this.selectionStart = -1;
         this.blinkTimer = 0;
-        this.mousePos = { x: 0, y: 0 };
-        this.settings = Object.assign(TextInput.defaultSettings, settings);
+        this.settings = Object.assign({}, TextInput.defaultSettings, settings);
         this.settings.bounds.h = this.settings.fontSize + 2;
 
         this.hiddenInput = document.createElement('input') as HTMLInputElement;
@@ -117,6 +113,9 @@ class TextInput {
                 break;
             case 39: // right arrow
                 this.onRight(event);
+                break;
+            case 9: // tab
+                event.preventDefault();
                 break;
         }
 
@@ -193,16 +192,8 @@ class TextInput {
     }
 
     onMouseMove(event: MouseEvent) {
-        const target = event.target as HTMLElement;
-        const rect = target.getBoundingClientRect();
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-
-        this.mousePos.x = x;
-        this.mousePos.y = y;
-
         if (this.isFocused && this.selectionStart >= 0) {
-            const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
+            const curPos = this.clickPos(window.mousePos.x, window.mousePos.y);
             const start = Math.min(this.selectionStart, curPos);
             const end = Math.max(this.selectionStart, curPos);
 
@@ -214,10 +205,10 @@ class TextInput {
         event.preventDefault();
         const leftButton = event.button === 0;
 
-        if (leftButton && this.contains(this.mousePos.x, this.mousePos.y)) {
+        if (leftButton && this.contains(window.mousePos.x, window.mousePos.y)) {
             this.setFocus(true);
 
-            const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
+            const curPos = this.clickPos(window.mousePos.x, window.mousePos.y);
             this.setSelection(curPos, curPos);
             this.selectionStart = curPos;
 
@@ -235,8 +226,8 @@ class TextInput {
         event.preventDefault();
         const leftButton = event.button === 0;
 
-        if (leftButton && this.contains(this.mousePos.x, this.mousePos.y)) {
-            const curPos = this.clickPos(this.mousePos.x, this.mousePos.y);
+        if (leftButton && this.contains(window.mousePos.x, window.mousePos.y)) {
+            const curPos = this.clickPos(window.mousePos.x, window.mousePos.y);
             const [start, end] = this.getNearestTermIndex(curPos);
             this.setSelection(start, end);
         }
@@ -264,7 +255,10 @@ class TextInput {
     }
 
     render(deltaTime: number) {
-        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.context.font = `${this.settings.fontSize}px monospace`;
+        this.context.textAlign = 'left';
+        this.context.textBaseline = 'middle';
+
         this.blinkTimer += deltaTime;
 
         const x = this.settings.bounds.x + this.settings.padding.left + this.settings.border.left;
@@ -288,10 +282,6 @@ class TextInput {
 
         const area = this.area();
         const textY = Math.round(y + this.settings.fontSize / 2);
-
-        this.context.font = `${this.settings.fontSize}px monospace`;
-        this.context.textAlign = 'left';
-        this.context.textBaseline = 'middle';
 
         const [before, after] = this.getSelectionOutside();
         const selectionText = this.value.substring(this.selection[0], this.selection[1]);

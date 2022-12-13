@@ -209,6 +209,12 @@ class TextInput {
             this.setFocus(true);
 
             const curPos = this.clickPos(window.mousePos.x, window.mousePos.y);
+
+            if (event.detail === 3 && curPos >= this.selection[0] && curPos <= this.selection[1]) {
+                this.selectAllText();
+                return;
+            }
+
             this.setSelection(curPos, curPos);
             this.selectionStart = curPos;
 
@@ -416,6 +422,9 @@ class TextInput {
     }
 
     private measureText(text: string) {
+        this.context.font = `${this.settings.fontSize}px monospace`;
+        this.context.textAlign = 'left';
+        this.context.textBaseline = 'middle';
         return this.context.measureText(text).width;
     }
 

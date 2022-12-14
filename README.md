@@ -15,3 +15,4 @@ just run `npm run dev`
 - left/right selection bug fix
 - alt + arrow subtle selection bug fix
 - placeholder
+- disable/enable

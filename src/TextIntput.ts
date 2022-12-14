@@ -12,7 +12,7 @@ class TextInput {
         maxLength: -1,
         caretBlinkRate: 0.5,
         defaultValue: '',
-        limitRegex: '',
+        limitInputFn: (str: string): boolean => { return true; },
         bounds: {
             x: 10,
             y: 250,
@@ -120,6 +120,11 @@ class TextInput {
         }
 
         const target = event.target as HTMLInputElement;
+        // if (!this.settings.limitInputFn(target.value)) {
+        //     event.preventDefault();
+        //     return;
+        // }
+        
         this.setValue(target.value);
         this.setSelection(target.selectionStart, target.selectionEnd);
     }
@@ -162,9 +167,7 @@ class TextInput {
             return;
         }
 
-        const prevCurPos = altKey ?
-            this.getNearestTermIndex(this.selection[0])[0]
-            : this.clamp(this.selection[0] - 1, 0, this.value.length);
+        const prevCurPos = altKey ? this.getNearestTermIndex(this.selection[0])[0] : this.selection[0] - 1;
 
         this.setSelection(
             prevCurPos,
@@ -181,9 +184,7 @@ class TextInput {
             return;
         }
 
-        const nextCurPos = altKey ?
-            this.getNearestTermIndex(this.selection[1])[1]
-            : this.clamp(this.selection[1] + 1, 0, this.value.length);
+        const nextCurPos = altKey ? this.getNearestTermIndex(this.selection[1])[1] : this.selection[1] + 1;
 
         this.setSelection(
             event.shiftKey ? this.selection[0] : nextCurPos,
@@ -307,10 +308,14 @@ class TextInput {
     }
 
     setSelection(start: number, end: number) {
+        start = this.clamp(start, 0, this.value.length);
+        end = this.clamp(end, 0, this.value.length);
+
         this.selection[0] = start;
         this.selection[1] = end;
         this.hiddenInput.selectionStart = start;
         this.hiddenInput.selectionEnd = end;
+        
         this.blinkTimer = this.settings.caretBlinkRate;
     }
 

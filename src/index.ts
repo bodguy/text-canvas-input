@@ -14,6 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     canvas.addEventListener('mousemove', mouse);
 
+    const validation = {
+        isEmailAddress: (str: string): boolean => {
+            const pattern =/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+            return pattern.test(str);
+        },
+        isNumber: (str: string): boolean => {
+            const pattern = /^\d+\.?\d*$/;
+            return pattern.test(str);
+        }
+    };   
+
     const textInput = new TextInput({
         fontSize: 30,
         bounds: {
@@ -21,7 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
             y: 250,
             w: 780,
             h: 15
-        }
+        },
+        limitInputFn: validation.isEmailAddress
     }, canvas, context);
 
     const textInput2 = new TextInput({
